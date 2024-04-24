@@ -16,10 +16,10 @@ export const LocationOfTheProblems = ({
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    const typeProblemId = searchParams.get("typeProblemId");
+    const locationProblemId = searchParams.get("locationProblemId");
 
     const onClick = (id: string | undefined) => {
-        const query = { typeProblemId: id};
+        const query = { locationProblemId: id };
 
         const url = qs.stringifyUrl({
             url: window.location.href,
@@ -31,6 +31,29 @@ export const LocationOfTheProblems = ({
 
     return (
         <div className="w-full overflow-x-auto space-x-2 flex p-1">
+            <button
+                onClick={() => onClick(undefined)}
+                className={cn(`
+                    flex
+                    items-center
+                    text-center
+                    text-xs
+                    md:text-sm
+                    px-2
+                    md:px-4
+                    py-2
+                    md:py-3
+                    rounded-md
+                    bg-primary/10
+                    hover:opacity-75
+                    transition
+                `,
+                    !locationProblemId ? "bg-primary/25" : "bg-primary/10"
+                )}
+            >
+                All Problems Reported
+            </button>
+
             {data.map((item) => (
                 <button
                     onClick={() => onClick(item.id)}
@@ -50,7 +73,7 @@ export const LocationOfTheProblems = ({
                                 hover:opacity-75
                                 transition
                             `,
-                            item.id === typeProblemId ? "bg-primary/25" : "bg-primary/10"
+                        item.id === locationProblemId ? "bg-primary/25" : "bg-primary/10"
                     )}
                 >
                     {item.name}

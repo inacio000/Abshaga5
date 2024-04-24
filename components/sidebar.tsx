@@ -17,7 +17,7 @@ export const Sidebar = () => {
         },
         {
             icon: Plus,
-            href: "/report/new",
+            href: "/reportProblem/new",
             label: "Report Problem",
             pro: true
         }

@@ -5,10 +5,31 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
 }
 
 model LocationOfTheProblem {
-  id String @id @default(uuid())
-  name String
+  id            String          @id @default(uuid())
+  name          String
+  reportProblem ReportProblem[]
+}
+
+model ReportProblem {
+  id            String @id @default(uuid())
+  userId        String
+  userName      String
+  src           String
+  problemTittle String @db.Text
+  description   String @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  locationOfTheProblem LocationOfTheProblem @relation(fields: [locationProblemId], references: [id])
+
+  locationProblemId String
+
+  @@index([locationProblemId])
+  @@fulltext([problemTittle])
 }
