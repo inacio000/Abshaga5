@@ -1,6 +1,7 @@
 "use client"
 
 import * as z from "zod";
+import axios from "axios";
 import { LocationOfTheProblem, ReportProblem } from "@prisma/client";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -11,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
+import { useRouter } from "next/navigation";
 
 interface ReportProblemFormProps {
     initialData: ReportProblem | null;
@@ -44,6 +47,9 @@ export const ReportProblemForm = ({
     initialData,
     locationOfTheProblem
 }: ReportProblemFormProps) => {
+    const { toast } = useToast();
+    const router = useRouter();
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: initialData || {
@@ -57,11 +63,24 @@ export const ReportProblemForm = ({
     const isLoading = form.formState.isSubmitting;
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
-        // try {
+        try {
+            await axios.post("/api/reportProblem", values);
 
-        // } catch (error) {
+            toast({
+                description: "Report sent.",
+                duration: 3000,
+            });
 
-        // }
+            router.refresh();
+            router.push("/");
+            
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                description: "Something went wrong.",
+                duration: 3000,
+            });
+        }
         console.log(values)
     }
 
@@ -70,14 +89,16 @@ export const ReportProblemForm = ({
             <Form {...form}>
                 <form
                     onSubmit={form.handleSubmit(onSubmit)}
-                    className="space-y-8 pb-10"
+                    className="space-y-6 pb-10"
                 >
                     <div className="space-y-2 w-full col-span-2">
                         <div>
                             <h3 className="text-lg font-medium">Reporting a Problem</h3>
                             <p className="text-sm text-muted-foreground">Report a technical problem of your
                                 {problemPlaces.map((item) => (
-                                    <span className="font-bold">
+                                    <span 
+                                    key={item.name}
+                                    className="font-bold">
                                         {item.name}
                                     </span>
                                 )
@@ -101,7 +122,7 @@ export const ReportProblemForm = ({
                             </FormItem>
                         )}
                     />
-                    <div className="flex flex-col justify-center md:flex-row justify-between">
+                    <div className="flex gap-6 flex-col justify-center md:flex-row md:justify-between">
                         <FormField
                             name="problemTittle"
                             control={form.control}
