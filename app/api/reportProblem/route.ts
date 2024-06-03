@@ -4,35 +4,69 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
     try {
-      const body = await req.json();
-      const user = await currentUser();
-      const { src, problemTittle, description, locationProblemId } = body;
+        const body = await req.json();
+        const user = await currentUser();
+        const { reportImage, problemTittle, description, locationProblemId, floorId, blockId, roomId, toiletId } = body;
 
-      if (!user || !user.id || !user.username) {
-        return new NextResponse("Unauthorized", { status: 401 });
-      }
-
-      if (!src || !problemTittle || !description || !locationProblemId) {
-        return new NextResponse("Missing required fields", { status: 400 });
-      }
-
-      // TODO: check if is Student or Technician
-
-      const reportProblem = await prismadb.reportProblem.create({
-        data: {
-            locationProblemId,
-            userId: user.id,
-            userName: user.username,
-            src,
-            problemTittle,
-            description,
+        if (!user || !user.id || !user.username) {
+            return new NextResponse("Unauthorized", { status: 401 });
         }
-      });
 
-      return NextResponse.json(reportProblem);
-        
+        if (!reportImage || !problemTittle || !description || !locationProblemId) {
+            return new NextResponse("Missing required fields", { status: 400 });
+        }
+
+        const imageUrls = reportImage.map((image: { url: string }) => image);
+
+        const reportProblem = await prismadb.reportProblem.create({
+            data: {
+                locationProblemId,
+                userId: user.id,
+                userName: user.username,
+                reportImage: {
+                    createMany: {
+                        data: imageUrls
+                    }
+                },
+                problemTittle,
+                description,
+                floorId,
+                blockId,
+                roomId,
+                toiletId
+                // TODO: remove room or toilet from DB and change everywhere it include
+            }
+        });
+
+        return NextResponse.json(reportProblem);
     } catch (error) {
         console.log("[REPORT_PROBLEM_POST]", error);
         return new NextResponse("Internal Error", { status: 500 });
     }
+}
+
+
+export async function DELETE (
+  req: Request,
+  { params }: { params: { reportProblemId: string }}
+) {
+  try {
+    const user = await currentUser();
+
+    if (!user || !user.id || !user.username) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const reportProblem = await prismadb.reportProblem.deleteMany({
+      where: {
+        id: params.reportProblemId,
+        userId: user.id
+      }
+    });
+
+    return NextResponse.json(reportProblem);
+  } catch (error) {
+    console.log("[REPORT_IMAGE_DELETE]", error);
+    return new NextResponse("Internal error", { status: 500});
+  }
 }
