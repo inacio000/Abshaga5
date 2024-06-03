@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
 import * as z from "zod";
 import axios from "axios";
-import { LocationOfTheProblem, ReportProblem } from "@prisma/client";
+import { LocationOfTheProblem, ReportImage, ReportProblem } from "@prisma/client";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod"
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 import { ImageUpload } from "@/components/image-upload";
@@ -13,29 +13,42 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import ImagesUpload from "@/components/images-upload";
+import { useEffect, useState } from "react";
 
 interface ReportProblemFormProps {
-    initialData: ReportProblem | null;
     locationOfTheProblem: LocationOfTheProblem[];
+};
+
+interface Floor {
+    id: string;
+    number: number;
+}
+
+interface Block {
+    id: string;
+    number: number;
+}
+
+interface RoomOrToilet {
+    id: string;
+    number?: string;
 }
 
 const PREAMBLE = `Yesterday the lamp was on all day, overnight I turned it off, but when I turned it back on this morning, it just broke. But before that happened, it was already looking a little weird, different from the normal color of a lamp.`;
 
+type ReportFormValues = z.infer<typeof formSchema> & { roomOrToiletId: string };
+
 const formSchema = z.object({
-    problemTittle: z.string().min(1, {
-        message: "Problem Tittle is required"
-    }),
-    description: z.string().min(50, {
-        message: "Description required at least 50 characters"
-    }),
-    src: z.string().min(1, {
-        message: "Image is required"
-    }),
-    locationProblemId: z.string().min(1, {
-        message: "Location is required"
-    }),
-})
+    problemTittle: z.string().min(1, { message: "Problem Title is required" }),
+    description: z.string().min(50, { message: "Description required at least 50 characters" }),
+    reportImage: z.object({ url: z.string() }).array(),
+    locationProblemId: z.string().min(1, { message: "Location is required" }),
+    floorId: z.string().min(1, { message: "Floor is required" }),
+    blockId: z.string().min(1, { message: "Block is required" }),
+    roomOrToiletId: z.string().min(1, { message: "Room or Toilet is required" }),
+});
 
 const problemPlaces = [
     { name: " Room | " },
@@ -43,28 +56,42 @@ const problemPlaces = [
     { name: "Block" }
 ]
 
-export const ReportProblemForm = ({
-    initialData,
+export const ReportProblemForm: React.FC<ReportProblemFormProps> = ({
     locationOfTheProblem
-}: ReportProblemFormProps) => {
+}) => {
+    const params = useParams();
     const { toast } = useToast();
     const router = useRouter();
+    const [floors, setFloors] = useState<Floor[]>([]);
+    const [blocks, setBlocks] = useState<Block[]>([]);
+    const [roomsAndToilets, setRoomsAndToilets] = useState<RoomOrToilet[]>([]);
 
-    const form = useForm<z.infer<typeof formSchema>>({
+    const form = useForm<ReportFormValues>({
         resolver: zodResolver(formSchema),
-        defaultValues: initialData || {
+        defaultValues: {
             problemTittle: "",
             description: "",
-            src: "",
-            locationProblemId: undefined
+            reportImage: [],
+            locationProblemId: "",
+            floorId: "", 
+            blockId: "",
+            roomOrToiletId: "",
         }
     });
 
     const isLoading = form.formState.isSubmitting;
 
-    const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    const onSubmit = async (data: ReportFormValues) => {
+        // TODO: remove room or toilet from DB and change everywhere it include
         try {
-            await axios.post("/api/reportProblem", values);
+            const formattedData = {
+                ...data,
+                reportImage: data.reportImage.map(image => ({ url: image.url }))
+            };
+
+            console.log("Dados formatados antes do envio:", formattedData); 
+
+            await axios.post(`/api/reportProblem`, formattedData);
 
             toast({
                 description: "Report sent.",
@@ -73,16 +100,80 @@ export const ReportProblemForm = ({
 
             router.refresh();
             router.push("/");
-            
         } catch (error) {
             toast({
                 variant: "destructive",
                 description: "Something went wrong.",
                 duration: 3000,
             });
+            console.log(error)
         }
-        console.log(values)
-    }
+        console.log(data)
+    };
+
+    useEffect(() => {
+        const fetchFloors = async () => {
+            try {
+                const response = await axios.get('/api/floors');
+                setFloors(response.data);
+            } catch (error) {
+                console.error('Error fetching floors:', error);
+            }
+        };
+
+        fetchFloors();
+    }, []);
+
+    useEffect(() => {
+        const fetchBlocks = async () => {
+            try {
+                const response = await axios.get('/api/blocks');
+                setBlocks(response.data);
+            } catch (error) {
+                console.error('Error fetching blocks:', error);
+            }
+        };
+
+        fetchBlocks();
+    }, []);
+
+    useEffect(() => {
+        const fetchRoomsAndToilets = async () => {
+            try {
+                const response = await axios.get('/api/roomsAndToilets');
+                setRoomsAndToilets(response.data);
+            } catch (error) {
+                console.error('Error fetching rooms and toilets:', error);
+            }
+        };
+
+        fetchRoomsAndToilets();
+    }, []);
+
+    const handleFloorChange = async (floorId: string) => {
+        form.setValue('floorId', floorId);
+        form.setValue('blockId', '');
+        form.setValue('roomOrToiletId', '');
+
+        try {
+            const response = await axios.get(`/api/blocks?floorId=${floorId}`);
+            setBlocks(response.data);
+        } catch (error) {
+            console.error('Error fetching blocks:', error);
+        }
+    };
+
+    const handleBlockChange = async (blockId: string) => {
+        form.setValue('blockId', blockId);
+        form.setValue('roomOrToiletId', '');
+
+        try {
+            const response = await axios.get(`/api/roomsAndToilets?blockId=${blockId}`);
+            setRoomsAndToilets(response.data);
+        } catch (error) {
+            console.error('Error fetching rooms and toilets:', error);
+        }
+    };
 
     return (
         <div className="h-full p-4 space-y-2 max-w-3xl mx-auto">
@@ -96,32 +187,32 @@ export const ReportProblemForm = ({
                             <h3 className="text-lg font-medium">Reporting a Problem</h3>
                             <p className="text-sm text-muted-foreground">Report a technical problem of your
                                 {problemPlaces.map((item) => (
-                                    <span 
-                                    key={item.name}
-                                    className="font-bold">
+                                    <span
+                                        key={item.name}
+                                        className="font-bold">
                                         {item.name}
                                     </span>
-                                )
-                                )}
+                                ))}
                             </p>
                         </div>
                         <Separator className="bg-primary/10" />
                     </div>
                     <FormField
-                        name="src"
+                        name="reportImage"
                         render={({ field }) => (
                             <FormItem className="flex flex-col items-center justify-center space-y-4 col-span-2">
                                 <FormControl>
-                                    <ImageUpload
-                                        disable={isLoading} onChange={field.onChange}
-                                        value={field.value}
+                                    <ImagesUpload
+                                        images={field.value.map((image: { url: string }) => image.url)}
+                                        disabled={isLoading} onChange={(url) => field.onChange([...field.value, { url }])}
+                                        onRemove={(url) => field.onChange([...field.value.filter((current: any) => current.url !== url)])}
                                     />
                                 </FormControl>
                                 <FormMessage />
-
                             </FormItem>
                         )}
                     />
+
                     <div className="flex gap-6 flex-col justify-center md:flex-row md:justify-between">
                         <FormField
                             name="problemTittle"
@@ -169,31 +260,117 @@ export const ReportProblemForm = ({
                             )}
                         />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                        <FormField
-                            name="description"
-                            control={form.control}
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Description</FormLabel>
+                    <FormField
+                        control={form.control}
+                        name="floorId"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Floor</FormLabel>
+                                <Select disabled={isLoading} onValueChange={(value) => {
+                                    field.onChange(value);
+                                    handleFloorChange(value);
+                                }} value={field.value} defaultValue={field.value}>
                                     <FormControl>
-                                        <Textarea disabled={isLoading} rows={7} className="bg-background resize-none" placeholder={PREAMBLE} {...field} />
+                                        <SelectTrigger className="bg-background">
+                                            <SelectValue defaultValue={field.value} placeholder="Select floor" />
+                                        </SelectTrigger>
                                     </FormControl>
-                                    <FormDescription>
-                                        Write here in detail what happened, to help the Technician in solving the problem.
-                                    </FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                    <div className="w-full flex justify-center">
-                        <Button size="lg" disabled={isLoading}>
-                            {initialData ? "Edit Problem Report" : "Send Problem Report"}
-                        </Button>
-                    </div>
+                                    <SelectContent>
+                                        {floors.map((floor) => (
+                                            <SelectItem key={floor.id} value={floor.id}>{floor.number}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormDescription>
+                                    Select the floor where the problem is located.
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="blockId"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Block</FormLabel>
+                                <Select disabled={isLoading} onValueChange={(value) => {
+                                    field.onChange(value);
+                                    handleBlockChange(value);
+                                }} value={field.value} defaultValue={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger className="bg-background">
+                                            <SelectValue defaultValue={field.value} placeholder="Select block" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {blocks.map((block) => (
+                                            <SelectItem key={block.id} value={block.id}>{block.number}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormDescription>
+                                    Select the block where the problem is located.
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="roomOrToiletId"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Room or Toilet</FormLabel>
+                                <Select disabled={isLoading} onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger className="bg-background">
+                                            <SelectValue defaultValue={field.value} placeholder="Select room or toilet" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {roomsAndToilets.map((item) => (
+                                            <SelectItem key={item.id} value={item.id}>{item.number}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormDescription>
+                                    Select the room or toilet where the problem is located.
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Description</FormLabel>
+                                <FormControl>
+                                    <Textarea
+                                        disabled={isLoading}
+                                        placeholder={PREAMBLE}
+                                        className="resize-none bg-background"
+                                        {...field}
+                                    />
+                                </FormControl>
+                                <FormDescription>
+                                    Write a description for the problem
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <Button
+                        disabled={isLoading}
+                        className="ml-auto"
+                        type="submit"
+                    >
+                        Send
+                    </Button>
                 </form>
             </Form>
         </div>
-    )
-}
+    );
+};

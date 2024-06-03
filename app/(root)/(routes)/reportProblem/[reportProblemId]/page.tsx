@@ -15,6 +15,9 @@ const ReportProblemPage = async ({
     const reportProblem = await prismadb.reportProblem.findUnique({
         where: {
             id: params.reportProblemId,
+        },
+        include: {
+            reportImage: true,
         }
     });
 
@@ -22,7 +25,7 @@ const ReportProblemPage = async ({
 
     return (
         <ReportProblemForm 
-            initialData={reportProblem}
+            // initialData={reportProblem}
             locationOfTheProblem={locationOfTheProblem}
         />
     )
