@@ -19,7 +19,7 @@ import { useEffect, useState } from "react";
 
 interface ReportProblemFormProps {
     locationOfTheProblem: LocationOfTheProblem[];
-};
+}
 
 interface Floor {
     id: string;
@@ -31,14 +31,14 @@ interface Block {
     number: number;
 }
 
-interface RoomOrToilet {
+interface Room {
     id: string;
     number?: string;
 }
 
 const PREAMBLE = `Yesterday the lamp was on all day, overnight I turned it off, but when I turned it back on this morning, it just broke. But before that happened, it was already looking a little weird, different from the normal color of a lamp.`;
 
-type ReportFormValues = z.infer<typeof formSchema> & { roomOrToiletId: string };
+// type ReportFormValues = z.infer<typeof formSchema> & { roomId: string };
 
 const formSchema = z.object({
     problemTittle: z.string().min(1, { message: "Problem Title is required" }),
@@ -47,7 +47,7 @@ const formSchema = z.object({
     locationProblemId: z.string().min(1, { message: "Location is required" }),
     floorId: z.string().min(1, { message: "Floor is required" }),
     blockId: z.string().min(1, { message: "Block is required" }),
-    roomOrToiletId: z.string().min(1, { message: "Room or Toilet is required" }),
+    roomId: z.string().min(1, { message: "Room is required" }),
 });
 
 const problemPlaces = [
@@ -59,37 +59,36 @@ const problemPlaces = [
 export const ReportProblemForm: React.FC<ReportProblemFormProps> = ({
     locationOfTheProblem
 }) => {
-    const params = useParams();
+    // const params = useParams();
     const { toast } = useToast();
     const router = useRouter();
     const [floors, setFloors] = useState<Floor[]>([]);
     const [blocks, setBlocks] = useState<Block[]>([]);
-    const [roomsAndToilets, setRoomsAndToilets] = useState<RoomOrToilet[]>([]);
+    const [rooms, setRooms] = useState<Room[]>([]);
 
-    const form = useForm<ReportFormValues>({
+    const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             problemTittle: "",
             description: "",
             reportImage: [],
             locationProblemId: "",
-            floorId: "", 
+            floorId: "",
             blockId: "",
-            roomOrToiletId: "",
+            roomId: "",
         }
     });
 
     const isLoading = form.formState.isSubmitting;
 
-    const onSubmit = async (data: ReportFormValues) => {
-        // TODO: remove room or toilet from DB and change everywhere it include
+    const onSubmit = async (data: z.infer<typeof formSchema>) => {
         try {
             const formattedData = {
                 ...data,
                 reportImage: data.reportImage.map(image => ({ url: image.url }))
             };
 
-            console.log("Dados formatados antes do envio:", formattedData); 
+            console.log("Dados formatados antes do envio:", formattedData);
 
             await axios.post(`/api/reportProblem`, formattedData);
 
@@ -106,7 +105,7 @@ export const ReportProblemForm: React.FC<ReportProblemFormProps> = ({
                 description: "Something went wrong.",
                 duration: 3000,
             });
-            console.log(error)
+            console.log(error);
         }
         console.log(data)
     };
@@ -138,22 +137,22 @@ export const ReportProblemForm: React.FC<ReportProblemFormProps> = ({
     }, []);
 
     useEffect(() => {
-        const fetchRoomsAndToilets = async () => {
+        const fetchRooms = async () => {
             try {
-                const response = await axios.get('/api/roomsAndToilets');
-                setRoomsAndToilets(response.data);
+                const response = await axios.get('/api/rooms');
+                setRooms(response.data);
             } catch (error) {
-                console.error('Error fetching rooms and toilets:', error);
+                console.error('Error fetching rooms:', error);
             }
         };
 
-        fetchRoomsAndToilets();
+        fetchRooms();
     }, []);
 
     const handleFloorChange = async (floorId: string) => {
         form.setValue('floorId', floorId);
         form.setValue('blockId', '');
-        form.setValue('roomOrToiletId', '');
+        form.setValue('roomId', '');
 
         try {
             const response = await axios.get(`/api/blocks?floorId=${floorId}`);
@@ -165,13 +164,13 @@ export const ReportProblemForm: React.FC<ReportProblemFormProps> = ({
 
     const handleBlockChange = async (blockId: string) => {
         form.setValue('blockId', blockId);
-        form.setValue('roomOrToiletId', '');
+        form.setValue('roomId', '');
 
         try {
-            const response = await axios.get(`/api/roomsAndToilets?blockId=${blockId}`);
-            setRoomsAndToilets(response.data);
+            const response = await axios.get(`/api/rooms?blockId=${blockId}`);
+            setRooms(response.data);
         } catch (error) {
-            console.error('Error fetching rooms and toilets:', error);
+            console.error('Error fetching rooms:', error);
         }
     };
 
@@ -218,7 +217,7 @@ export const ReportProblemForm: React.FC<ReportProblemFormProps> = ({
                             name="problemTittle"
                             control={form.control}
                             render={({ field }) => (
-                                <FormItem >
+                                <FormItem>
                                     <FormLabel>Problem Name</FormLabel>
                                     <FormControl>
                                         <Input
@@ -318,24 +317,24 @@ export const ReportProblemForm: React.FC<ReportProblemFormProps> = ({
                     />
                     <FormField
                         control={form.control}
-                        name="roomOrToiletId"
+                        name="roomId"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Room or Toilet</FormLabel>
+                                <FormLabel>Room</FormLabel>
                                 <Select disabled={isLoading} onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                                     <FormControl>
                                         <SelectTrigger className="bg-background">
-                                            <SelectValue defaultValue={field.value} placeholder="Select room or toilet" />
+                                            <SelectValue defaultValue={field.value} placeholder="Select room" />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                        {roomsAndToilets.map((item) => (
-                                            <SelectItem key={item.id} value={item.id}>{item.number}</SelectItem>
+                                        {rooms.map((room) => (
+                                            <SelectItem key={room.id} value={room.id}>{room.number}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                                 <FormDescription>
-                                    Select the room or toilet where the problem is located.
+                                    Select the room where the problem is located.
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>

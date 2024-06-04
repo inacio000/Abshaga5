@@ -5,10 +5,9 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["fullTextSearch", "fullTextIndex"]
 }
-
 
 model Floor {
   id     String  @id @default(uuid())
@@ -17,23 +16,16 @@ model Floor {
 }
 
 model Block {
-  id      String  @id @default(uuid())
+  id      String @id @default(uuid())
   number  Int
   floorId String
-  floor   Floor   @relation(fields: [floorId], references: [id])
+  floor   Floor  @relation(fields: [floorId], references: [id])
   rooms   Room[]
-  toilets Toilet[]
 }
 
 model Room {
-  id       String @id @default(uuid())
-  number   String @unique
-  blockId  String
-  block    Block  @relation(fields: [blockId], references: [id])
-}
-
-model Toilet {
   id      String @id @default(uuid())
+  number  String @unique
   blockId String
   block   Block  @relation(fields: [blockId], references: [id])
 }
@@ -45,32 +37,31 @@ model LocationOfTheProblem {
 }
 
 model ReportProblem {
-  id            String @id @default(uuid())
-  userId        String
-  userName      String
-  problemTittle String @db.Text
-  description   String @db.Text
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  reportImage   ReportImage[]
+  id                   String               @id @default(uuid())
+  userId               String
+  userName             String
+  problemTittle        String               @db.Text
+  description          String               @db.Text
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  reportImage          ReportImage[]
   locationOfTheProblem LocationOfTheProblem @relation(fields: [locationProblemId], references: [id])
   locationProblemId    String
   floorId              String?
   blockId              String?
   roomId               String?
-  toiletId             String?
 
   @@index([locationProblemId])
   @@fulltext([problemTittle])
 }
 
 model ReportImage {
-  id              String  @id @default(uuid())
+  id              String        @id @default(uuid())
   reportProblemId String
   url             String
   reportProblem   ReportProblem @relation(fields: [reportProblemId], references: [id], onDelete: Cascade)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([reportProblemId])
 }
