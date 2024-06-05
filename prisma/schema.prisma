@@ -21,6 +21,7 @@ model Block {
   floorId String
   floor   Floor  @relation(fields: [floorId], references: [id])
   rooms   Room[]
+  @@index([floorId])
 }
 
 model Room {
@@ -28,6 +29,7 @@ model Room {
   number  String @unique
   blockId String
   block   Block  @relation(fields: [blockId], references: [id])
+  @@index([blockId])
 }
 
 model LocationOfTheProblem {

@@ -25,9 +25,7 @@ const ReportProblemPage = async ({
 
     return (
         <ReportProblemForm 
-            // initialData={reportProblem}
-            locationOfTheProblem={locationOfTheProblem}
-        />
+            locationOfTheProblem={locationOfTheProblem} formattedData={reportProblem}/>
     )
 };
 

@@ -18,6 +18,7 @@ import ImagesUpload from "@/components/images-upload";
 import { useEffect, useState } from "react";
 
 interface ReportProblemFormProps {
+    formattedData: ReportProblem | null;
     locationOfTheProblem: LocationOfTheProblem[];
 }
 
