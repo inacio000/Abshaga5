@@ -54,7 +54,7 @@ export const ReportedProblems = ({
 
                 return (
                     <div key={problem.id}>
-                        <Link href={`/reportProblem/${problem.id}`}>
+                        <Link href={`/problem/${problem.id}`}>
                             <p>{problem.problemTittle}</p>
                             {/* <p>{problem.description}</p> */}
                             {floor && <p>Floor: {floor.number}</p>}
@@ -67,4 +67,4 @@ export const ReportedProblems = ({
             {/* TODO: Show all problems solved */}
         </div>
     );
-}
+};
